@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>クラシックオタマスター</title>
+<meta name="description" content="クラシック音楽に合わせてオタマトーンを演奏できる練習アプリ。メトロノーム付き、楽譜は全部ドレミ表記。">
+<meta name="theme-color" content="#2b1f4a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="オタマスター">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="app-header">
+    <h1>クラシック<span class="accent">オタマ</span>スター</h1>
+    <p class="tagline">クラシックの名曲を、ドレミでオタマトーン演奏</p>
+  </header>
+
+  <section class="song-panel card">
+    <label class="field-label" for="songSelect">曲をえらぶ</label>
+    <select id="songSelect" class="song-select"></select>
+    <p class="song-subtitle" id="songSubtitle"></p>
+  </section>
+
+  <section class="score-panel card">
+    <div class="score-viewport" id="scoreViewport">
+      <div class="playhead"></div>
+      <div class="score-track" id="scoreTrack"></div>
+    </div>
+    <div class="now-playing" id="nowPlaying">
+      <span class="now-note" id="nowNote">ド</span>
+    </div>
+  </section>
+
+  <section class="transport-panel card">
+    <div class="transport-buttons">
+      <button id="playBtn" class="btn btn-play" type="button" aria-label="再生">
+        <svg viewBox="0 0 24 24" class="icon icon-play"><path d="M8 5v14l11-7z"/></svg>
+        <svg viewBox="0 0 24 24" class="icon icon-pause" hidden><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+      </button>
+      <button id="stopBtn" class="btn btn-stop" type="button" aria-label="停止">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M6 6h12v12H6z"/></svg>
+      </button>
+      <label class="loop-toggle">
+        <input type="checkbox" id="loopCheck">
+        <span>くり返し</span>
+      </label>
+    </div>
+
+    <div class="tempo-row">
+      <span class="field-label">テンポ</span>
+      <button class="btn-small" id="bpmMinus" type="button" aria-label="テンポを下げる">－</button>
+      <input type="range" id="bpmSlider" min="40" max="200" step="1" value="100">
+      <button class="btn-small" id="bpmPlus" type="button" aria-label="テンポを上げる">＋</button>
+      <span class="bpm-value"><span id="bpmValue">100</span> BPM</span>
+      <button class="btn-small btn-reset" id="bpmReset" type="button">既定</button>
+    </div>
+
+    <div class="metro-row">
+      <label class="metro-toggle">
+        <input type="checkbox" id="metroCheck" checked>
+        <span>メトロノーム音</span>
+      </label>
+      <span class="beat-dots" id="beatDots"></span>
+    </div>
+  </section>
+
+  <footer class="app-footer">
+    <p>※ 楽譜は演奏しやすいよう簡略化した独自アレンジ(移動ド)です。原典の正確な採譜ではありません。</p>
+    <p>収録曲はすべてパブリックドメインの作品です。</p>
+  </footer>
+
+</div>
+
+<script src="songs.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

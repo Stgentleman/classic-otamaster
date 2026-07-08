@@ -1,0 +1,18 @@
+{
+  "name": "クラシックオタマスター",
+  "short_name": "オタマスター",
+  "description": "クラシック音楽に合わせてオタマトーンを演奏できる練習アプリ。メトロノーム付き、楽譜は全部ドレミ。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1b1330",
+  "theme_color": "#2b1f4a",
+  "lang": "ja",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

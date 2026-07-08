@@ -1,0 +1,306 @@
+:root {
+  --bg: #1b1330;
+  --bg2: #2b1f4a;
+  --card: #2f2350;
+  --card-border: #4a3a78;
+  --text: #f4f1ff;
+  --text-dim: #b6acd6;
+  --accent: #ff7ac6;
+  --accent2: #ffd166;
+  --good: #6be3a3;
+  --danger: #ff6b6b;
+  --note-bg: #3c2f66;
+  --note-active: #ff7ac6;
+  --radius: 18px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: radial-gradient(circle at top, var(--bg2), var(--bg) 70%);
+  color: var(--text);
+  font-family: "Hiragino Sans", "Yu Gothic UI", "Segoe UI", system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+}
+
+.app-header {
+  text-align: center;
+  padding: 8px 0 2px;
+}
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+}
+.app-header .accent { color: var(--accent); }
+.tagline {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.song-select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 1rem;
+  appearance: none;
+}
+.song-subtitle {
+  margin: 8px 2px 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* Score */
+.score-panel { padding: 0; overflow: hidden; }
+.score-viewport {
+  position: relative;
+  height: 132px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+  border-bottom: 1px solid var(--card-border);
+}
+.playhead {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--accent2);
+  box-shadow: 0 0 10px rgba(255,209,102,0.7);
+  z-index: 3;
+  border-radius: 2px;
+}
+.score-track {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  will-change: transform;
+}
+.note-block {
+  position: relative;
+  flex: 0 0 auto;
+  height: 92px;
+  margin: 0 3px;
+  border-radius: 12px;
+  background: var(--note-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  transition: background 0.12s, color 0.12s, transform 0.12s;
+}
+.note-block.rest {
+  background: transparent;
+  border: 1px dashed var(--card-border);
+  color: var(--text-dim);
+  font-size: 1rem;
+}
+.note-block .oct-dot {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.note-block .oct-dot.up { top: 10px; }
+.note-block .oct-dot.down { bottom: 10px; }
+.note-block.active {
+  background: var(--note-active);
+  color: #2a1030;
+  transform: scale(1.08);
+  box-shadow: 0 0 18px rgba(255,122,198,0.55);
+}
+.note-block.played {
+  background: #3c2f66;
+  color: #6e638f;
+  opacity: 0.6;
+}
+
+.now-playing {
+  text-align: center;
+  padding: 10px 0 16px;
+}
+.now-note {
+  font-size: 2.6rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-shadow: 0 0 24px rgba(255,122,198,0.4);
+}
+
+/* Transport */
+.transport-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.btn {
+  border: none;
+  border-radius: 50%;
+  width: 62px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+}
+.btn-play {
+  background: linear-gradient(135deg, var(--accent), #b34fd6);
+  box-shadow: 0 6px 16px rgba(255,122,198,0.4);
+}
+.btn-stop {
+  background: var(--bg2);
+  border: 1px solid var(--card-border);
+  width: 48px;
+  height: 48px;
+}
+.icon { width: 26px; height: 26px; fill: currentColor; }
+.btn-stop .icon { width: 18px; height: 18px; fill: var(--text-dim); }
+
+.loop-toggle {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.loop-toggle input { accent-color: var(--accent); width: 18px; height: 18px; }
+
+.tempo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.tempo-row input[type=range] {
+  flex: 1 1 100px;
+  accent-color: var(--accent);
+}
+.bpm-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  min-width: 78px;
+  text-align: right;
+  font-size: 0.9rem;
+}
+.btn-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.btn-reset {
+  width: auto;
+  border-radius: 10px;
+  padding: 0 10px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.metro-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.metro-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.metro-toggle input { accent-color: var(--accent); width: 18px; height: 18px; }
+
+.beat-dots {
+  display: flex;
+  gap: 6px;
+}
+.beat-dots .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--bg2);
+  border: 1px solid var(--card-border);
+  transition: background 0.08s, transform 0.08s;
+}
+.beat-dots .dot.on {
+  background: var(--accent2);
+  transform: scale(1.25);
+}
+.beat-dots .dot.on.downbeat {
+  background: var(--accent);
+}
+
+.app-footer {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  opacity: 0.8;
+  padding-top: 4px;
+}
+.app-footer p { margin: 2px 0; }
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4effb;
+    --bg2: #ffffff;
+    --card: #ffffff;
+    --card-border: #e3d9f5;
+    --text: #2b1f4a;
+    --text-dim: #7a6f99;
+    --note-bg: #efe7fb;
+  }
+}
