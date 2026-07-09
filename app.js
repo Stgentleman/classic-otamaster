@@ -22,7 +22,11 @@
   const bpmPlus = document.getElementById('bpmPlus');
   const bpmReset = document.getElementById('bpmReset');
   const metroCheck = document.getElementById('metroCheck');
+  const demoCheck = document.getElementById('demoCheck');
   const beatDotsEl = document.getElementById('beatDots');
+
+  const SEMITONES = { 'ド': 0, 'レ': 2, 'ミ': 4, 'ファ': 5, 'ソ': 7, 'ラ': 9, 'シ': 11 };
+  const BASE_FREQ = 261.6256; // C4, used as the movable "ド" reference pitch
 
   // ---- State ----
   let songIndex = 0;
@@ -42,6 +46,7 @@
   let rafId = null;
   let nextClickBeatIndex = 0; // global beat index (count-in + song) still to schedule
   let totalGlobalBeats = 0;
+  let nextNoteScheduleIndex = 0; // index into noteTimeline still to schedule for demo mode
 
   // ---------------- Song setup ----------------
 
@@ -163,14 +168,39 @@
     if (!metroCheck.checked) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.frequency.value = accent ? 1600 : 1000;
-    osc.type = 'square';
+    osc.frequency.value = accent ? 1000 : 750;
+    osc.type = 'sine';
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(accent ? 0.9 : 0.55, time + 0.002);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+    gain.gain.exponentialRampToValueAtTime(accent ? 0.6 : 0.4, time + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.07);
     osc.connect(gain).connect(masterGain);
     osc.start(time);
-    osc.stop(time + 0.06);
+    osc.stop(time + 0.08);
+  }
+
+  function noteFrequency(note) {
+    if (!note.n) return null;
+    const semitone = SEMITONES[note.n];
+    const octave = note.o || 0;
+    return BASE_FREQ * Math.pow(2, semitone / 12) * Math.pow(2, octave);
+  }
+
+  function scheduleNoteTone(time, durationSec, freq) {
+    if (!demoCheck.checked || !freq) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.value = freq;
+    osc.type = 'triangle';
+    const attack = 0.02;
+    const release = Math.min(0.09, durationSec * 0.3);
+    const sustainEnd = Math.max(time + attack, time + durationSec - release);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.32, time + attack);
+    gain.gain.setValueAtTime(0.32, sustainEnd);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + durationSec);
+    osc.connect(gain).connect(masterGain);
+    osc.start(time);
+    osc.stop(time + durationSec + 0.02);
   }
 
   function secPerBeat() {
@@ -186,6 +216,14 @@
       scheduleClick(t, accent);
       nextClickBeatIndex++;
     }
+    while (nextNoteScheduleIndex < noteTimeline.length &&
+           playStartTime + noteTimeline[nextNoteScheduleIndex].beatStart * spb < audioCtx.currentTime + SCHEDULE_AHEAD_SEC) {
+      const seg = noteTimeline[nextNoteScheduleIndex];
+      const t = playStartTime + seg.beatStart * spb;
+      const dur = (seg.beatEnd - seg.beatStart) * spb;
+      scheduleNoteTone(t, dur, noteFrequency(seg.note));
+      nextNoteScheduleIndex++;
+    }
   }
 
   // ---------------- Transport ----------------
@@ -197,6 +235,7 @@
     playStartTime = startTime + song.beatsPerMeasure * spb;
     totalGlobalBeats = song.beatsPerMeasure + Math.ceil(totalBeats);
     nextClickBeatIndex = 0;
+    nextNoteScheduleIndex = 0;
 
     isPlaying = true;
     isPaused = false;

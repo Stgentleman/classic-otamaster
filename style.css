@@ -254,6 +254,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .metro-toggle {
   display: flex;
