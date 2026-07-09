@@ -265,6 +265,12 @@ html, body {
 }
 .metro-toggle input { accent-color: var(--accent); width: 18px; height: 18px; }
 
+.vol-slider {
+  flex: 1 1 70px;
+  accent-color: var(--accent);
+  min-width: 60px;
+}
+
 .beat-dots {
   display: flex;
   gap: 6px;

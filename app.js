@@ -23,6 +23,8 @@
   const bpmReset = document.getElementById('bpmReset');
   const metroCheck = document.getElementById('metroCheck');
   const demoCheck = document.getElementById('demoCheck');
+  const metroVolSlider = document.getElementById('metroVolSlider');
+  const demoVolSlider = document.getElementById('demoVolSlider');
   const beatDotsEl = document.getElementById('beatDots');
 
   const SEMITONES = { 'ド': 0, 'レ': 2, 'ミ': 4, 'ファ': 5, 'ソ': 7, 'ラ': 9, 'シ': 11 };
@@ -166,12 +168,14 @@
 
   function scheduleClick(time, accent) {
     if (!metroCheck.checked) return;
+    const vol = metroVolSlider.value / 100;
+    if (vol <= 0) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.frequency.value = accent ? 1000 : 750;
     osc.type = 'sine';
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(accent ? 0.6 : 0.4, time + 0.004);
+    gain.gain.exponentialRampToValueAtTime((accent ? 0.6 : 0.4) * vol, time + 0.004);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.07);
     osc.connect(gain).connect(masterGain);
     osc.start(time);
@@ -187,6 +191,8 @@
 
   function scheduleNoteTone(time, durationSec, freq) {
     if (!demoCheck.checked || !freq) return;
+    const vol = demoVolSlider.value / 100;
+    if (vol <= 0) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.frequency.value = freq;
@@ -194,9 +200,10 @@
     const attack = 0.02;
     const release = Math.min(0.09, durationSec * 0.3);
     const sustainEnd = Math.max(time + attack, time + durationSec - release);
+    const peak = 0.32 * vol;
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(0.32, time + attack);
-    gain.gain.setValueAtTime(0.32, sustainEnd);
+    gain.gain.exponentialRampToValueAtTime(peak, time + attack);
+    gain.gain.setValueAtTime(peak, sustainEnd);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + durationSec);
     osc.connect(gain).connect(masterGain);
     osc.start(time);

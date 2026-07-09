@@ -66,11 +66,16 @@
         <input type="checkbox" id="metroCheck" checked>
         <span>メトロノーム音</span>
       </label>
+      <input type="range" id="metroVolSlider" class="vol-slider" min="0" max="150" step="5" value="100" aria-label="メトロノームの音量">
+      <span class="beat-dots" id="beatDots"></span>
+    </div>
+
+    <div class="metro-row">
       <label class="metro-toggle">
         <input type="checkbox" id="demoCheck">
         <span>お手本モード</span>
       </label>
-      <span class="beat-dots" id="beatDots"></span>
+      <input type="range" id="demoVolSlider" class="vol-slider" min="0" max="150" step="5" value="100" aria-label="お手本の音量">
     </div>
   </section>
 
