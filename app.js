@@ -5,10 +5,25 @@
   const LOOKAHEAD_MS = 25;
   const SCHEDULE_AHEAD_SEC = 0.1;
 
-  // ---- DOM refs ----
-  const songSelect = document.getElementById('songSelect');
-  const songSubtitle = document.getElementById('songSubtitle');
-  const scoreViewport = document.getElementById('scoreViewport');
+  // ---- DOM refs: screens ----
+  const screens = {
+    home: document.getElementById('screen-home'),
+    difficulty: document.getElementById('screen-difficulty'),
+    songlist: document.getElementById('screen-songlist'),
+    player: document.getElementById('screen-player'),
+  };
+  const difficultyTitle = document.getElementById('difficultyTitle');
+  const difficultyButtonsEl = document.getElementById('difficultyButtons');
+  const difficultyModeSwitch = document.getElementById('difficultyModeSwitch');
+  const songlistTitle = document.getElementById('songlistTitle');
+  const songlistModeSwitch = document.getElementById('songlistModeSwitch');
+  const songListEl = document.getElementById('songListEl');
+  const playerTitle = document.getElementById('playerTitle');
+  const playerSubtitle = document.getElementById('playerSubtitle');
+  const playerModeSwitch = document.getElementById('playerModeSwitch');
+  const modeBanner = document.getElementById('modeBanner');
+
+  // ---- DOM refs: player ----
   const scoreTrack = document.getElementById('scoreTrack');
   const nowNote = document.getElementById('nowNote');
   const playBtn = document.getElementById('playBtn');
@@ -29,9 +44,198 @@
 
   const SEMITONES = { 'ド': 0, 'レ': 2, 'ミ': 4, 'ファ': 5, 'ソ': 7, 'ラ': 9, 'シ': 11 };
   const BASE_FREQ = 261.6256; // C4, used as the movable "ド" reference pitch
+  const MODE_LABEL = { practice: '演奏練習', performance: '本番演奏' };
 
-  // ---- State ----
-  let songIndex = 0;
+  // ---------------- Local storage (favorites / practice status) ----------------
+
+  const STORAGE_KEY = 'classicOtamasterState_v1';
+
+  function loadStore() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      return { favorites: parsed?.favorites || [], status: parsed?.status || {} };
+    } catch {
+      return { favorites: [], status: {} };
+    }
+  }
+  function saveStore() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  }
+  const store = loadStore();
+
+  function isFavorite(id) {
+    return store.favorites.includes(id);
+  }
+  function toggleFavorite(id) {
+    const i = store.favorites.indexOf(id);
+    if (i >= 0) store.favorites.splice(i, 1);
+    else store.favorites.push(id);
+    saveStore();
+  }
+  function getSongStatus(id) {
+    return store.status[id] || { practiced: false, playCount: 0 };
+  }
+  function markPracticed(id) {
+    const s = getSongStatus(id);
+    s.practiced = true;
+    s.playCount = (s.playCount || 0) + 1;
+    store.status[id] = s;
+    saveStore();
+  }
+
+  // ---------------- Router ----------------
+
+  const STATE = { screen: 'home', mode: 'practice', difficulty: null, listContext: 'all', songId: null };
+  const navStack = [];
+
+  function snapshot() {
+    return { screen: STATE.screen, mode: STATE.mode, difficulty: STATE.difficulty, listContext: STATE.listContext, songId: STATE.songId };
+  }
+
+  function showScreenEl(name) {
+    Object.entries(screens).forEach(([key, el]) => {
+      el.hidden = key !== name;
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function renderCurrentScreen() {
+    showScreenEl(STATE.screen);
+    if (STATE.screen === 'difficulty') renderDifficultyScreen();
+    else if (STATE.screen === 'songlist') renderSongListScreen();
+    else if (STATE.screen === 'player') renderPlayerScreen();
+  }
+
+  function goTo(screenName, patch) {
+    navStack.push(snapshot());
+    Object.assign(STATE, patch, { screen: screenName });
+    renderCurrentScreen();
+  }
+
+  function goBack() {
+    const prev = navStack.pop();
+    if (!prev) {
+      STATE.screen = 'home';
+    } else {
+      Object.assign(STATE, prev);
+    }
+    if (STATE.screen === 'player' && isPlaying) stopPlayback(true);
+    renderCurrentScreen();
+  }
+
+  function switchMode() {
+    STATE.mode = STATE.mode === 'practice' ? 'performance' : 'practice';
+    renderCurrentScreen();
+  }
+
+  document.querySelectorAll('[data-back]').forEach((btn) => btn.addEventListener('click', goBack));
+  document.querySelectorAll('[data-nav-home]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.navHome;
+      if (target === 'practice') goTo('difficulty', { mode: 'practice' });
+      else if (target === 'performance') goTo('difficulty', { mode: 'performance' });
+      else if (target === 'library') goTo('songlist', { difficulty: null, listContext: 'all', mode: 'practice' });
+    });
+  });
+  difficultyModeSwitch.addEventListener('click', switchMode);
+  songlistModeSwitch.addEventListener('click', switchMode);
+  playerModeSwitch.addEventListener('click', switchMode);
+
+  // ---------------- Screen renderers ----------------
+
+  function songsForDifficulty(diffId) {
+    return window.SONGS.filter((s) => s.difficulty === diffId);
+  }
+
+  function renderDifficultyScreen() {
+    difficultyTitle.textContent = MODE_LABEL[STATE.mode];
+    difficultyModeSwitch.textContent = STATE.mode === 'practice' ? '本番演奏に切替' : '演奏練習に切替';
+    difficultyButtonsEl.innerHTML = '';
+    window.DIFFICULTY_LEVELS.forEach((level) => {
+      const songs = songsForDifficulty(level.id);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'difficulty-btn' + (songs.length === 0 ? ' empty' : '');
+      btn.innerHTML = `<span>${level.label}</span><span class="count">${songs.length > 0 ? songs.length + '曲' : '準備中'}</span>`;
+      btn.addEventListener('click', () => {
+        goTo('songlist', { difficulty: level.id, listContext: 'difficulty', mode: STATE.mode });
+      });
+      difficultyButtonsEl.appendChild(btn);
+    });
+  }
+
+  function difficultyLabel(id) {
+    const lvl = window.DIFFICULTY_LEVELS.find((l) => l.id === id);
+    return lvl ? lvl.label : id;
+  }
+
+  function renderSongListScreen() {
+    const isAll = STATE.listContext === 'all';
+    songlistModeSwitch.hidden = isAll;
+    if (isAll) {
+      songlistTitle.textContent = '楽曲一覧';
+    } else {
+      songlistTitle.textContent = `${difficultyLabel(STATE.difficulty)}の曲・${MODE_LABEL[STATE.mode]}`;
+      songlistModeSwitch.textContent = STATE.mode === 'practice' ? '本番演奏に切替' : '演奏練習に切替';
+    }
+
+    const list = isAll ? window.SONGS.slice() : songsForDifficulty(STATE.difficulty);
+    list.sort((a, b) => Number(isFavorite(b.id)) - Number(isFavorite(a.id)));
+
+    songListEl.innerHTML = '';
+    if (list.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'empty-state';
+      empty.textContent = 'この難易度の曲は準備中です。近日追加予定！';
+      songListEl.appendChild(empty);
+      return;
+    }
+
+    list.forEach((s) => {
+      const status = getSongStatus(s.id);
+      const card = document.createElement('div');
+      card.className = 'song-card';
+
+      const main = document.createElement('div');
+      main.className = 'song-card-main';
+      main.innerHTML = `
+        <div class="song-card-title">${s.title}</div>
+        <div class="song-card-sub">${s.subtitle}</div>
+        <div class="song-card-badges">
+          ${isAll ? `<span class="badge tag-${s.difficulty}">${difficultyLabel(s.difficulty)}</span>` : ''}
+          ${status.practiced ? '<span class="badge status-practiced">演奏済み</span>' : ''}
+        </div>`;
+      main.addEventListener('click', () => goTo('player', { songId: s.id }));
+
+      const star = document.createElement('button');
+      star.type = 'button';
+      star.className = 'star-btn' + (isFavorite(s.id) ? ' favorited' : '');
+      star.textContent = isFavorite(s.id) ? '★' : '☆';
+      star.setAttribute('aria-label', 'お気に入り切替');
+      star.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFavorite(s.id);
+        renderSongListScreen();
+      });
+
+      card.appendChild(main);
+      card.appendChild(star);
+      songListEl.appendChild(card);
+    });
+  }
+
+  function renderPlayerScreen() {
+    const s = window.SONGS.find((x) => x.id === STATE.songId);
+    if (!s) return;
+    playerTitle.textContent = s.title;
+    playerSubtitle.textContent = s.subtitle;
+    playerModeSwitch.textContent = STATE.mode === 'practice' ? '本番演奏に切替' : '演奏練習に切替';
+    modeBanner.hidden = STATE.mode !== 'performance';
+    if (song !== s) loadSong(s);
+  }
+
+  // ---------------- Song setup ----------------
+
   let song = null;
   let bpm = 100;
   let noteTimeline = []; // {note, beatStart, beatEnd}
@@ -49,28 +253,15 @@
   let nextClickBeatIndex = 0; // global beat index (count-in + song) still to schedule
   let totalGlobalBeats = 0;
   let nextNoteScheduleIndex = 0; // index into noteTimeline still to schedule for demo mode
+  let reachedEndThisRun = false;
 
-  // ---------------- Song setup ----------------
-
-  function populateSongSelect() {
-    window.SONGS.forEach((s, i) => {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = s.title;
-      songSelect.appendChild(opt);
-    });
-  }
-
-  function loadSong(index) {
+  function loadSong(newSong) {
     stopPlayback(true);
-    songIndex = index;
-    song = window.SONGS[songIndex];
+    song = newSong;
     bpm = song.bpm;
     bpmSlider.value = bpm;
     bpmValue.textContent = bpm;
-    songSubtitle.textContent = song.subtitle;
 
-    // Build cumulative timeline
     noteTimeline = [];
     let cursor = 0;
     song.notes.forEach((n) => {
@@ -243,6 +434,7 @@
     totalGlobalBeats = song.beatsPerMeasure + Math.ceil(totalBeats);
     nextClickBeatIndex = 0;
     nextNoteScheduleIndex = 0;
+    reachedEndThisRun = false;
 
     isPlaying = true;
     isPaused = false;
@@ -325,6 +517,10 @@
       // still counting in
       setTrackPositionAtBeat(0);
     } else if (elapsedBeats >= totalBeats) {
+      if (!reachedEndThisRun) {
+        reachedEndThisRun = true;
+        markPracticed(song.id);
+      }
       if (loopCheck.checked) {
         stopPlayback(true);
         startPlayback();
@@ -356,10 +552,6 @@
 
   stopBtn.addEventListener('click', () => stopPlayback(false));
 
-  songSelect.addEventListener('change', (e) => {
-    loadSong(parseInt(e.target.value, 10));
-  });
-
   function setBpm(v) {
     bpm = Math.min(200, Math.max(40, v));
     bpmSlider.value = bpm;
@@ -384,7 +576,9 @@
   });
 
   window.addEventListener('resize', () => {
-    if (!isPlaying) requestAnimationFrame(() => setTrackPositionAtBeat(0));
+    if (!isPlaying && screens.player && !screens.player.hidden) {
+      requestAnimationFrame(() => setTrackPositionAtBeat(0));
+    }
   });
 
   // ---------------- Service worker ----------------
@@ -395,6 +589,5 @@
   }
 
   // ---------------- Init ----------------
-  populateSongSelect();
-  loadSong(0);
+  renderCurrentScreen();
 })();

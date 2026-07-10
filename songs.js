@@ -2,12 +2,22 @@
 // note: { n: 'ド'|'レ'|'ミ'|'ファ'|'ソ'|'ラ'|'シ'|null(休符), o: -1|0|1(オクターブ, 0=標準), b: 拍数(四分音符=1) }
 // ※ 移動ド(その曲の主音を「ド」とする)による簡易採譜です。Otamatoneでの練習用アレンジとして
 //    リズムや音程を分かりやすく簡略化しています。正確な原典楽譜ではありません。
+//
+// difficulty: 'beginner' | 'intermediate' | 'advanced'
+//   曲の長さと音程の跳躍の少なさで暫定的に分類。今後曲を追加して各5〜15曲に増やす予定。
+
+window.DIFFICULTY_LEVELS = [
+  { id: 'beginner', label: '初級' },
+  { id: 'intermediate', label: '中級' },
+  { id: 'advanced', label: '上級' },
+];
 
 window.SONGS = [
   {
     id: 'ode-to-joy',
     title: '喜びの歌',
     subtitle: 'ベートーヴェン: 交響曲第9番「合唱」より',
+    difficulty: 'intermediate',
     bpm: 100,
     beatsPerMeasure: 4,
     notes: [
@@ -37,6 +47,7 @@ window.SONGS = [
     id: 'twinkle',
     title: 'きらきら星の主題',
     subtitle: 'モーツァルト: 「きらきら星変奏曲」より(仏民謡)',
+    difficulty: 'beginner',
     bpm: 100,
     beatsPerMeasure: 4,
     notes: [
@@ -58,6 +69,7 @@ window.SONGS = [
     id: 'fate',
     title: '運命の動機',
     subtitle: 'ベートーヴェン: 交響曲第5番「運命」より',
+    difficulty: 'beginner',
     bpm: 108,
     beatsPerMeasure: 4,
     notes: [
@@ -71,6 +83,7 @@ window.SONGS = [
     id: 'musunde-hiraite',
     title: 'むすんでひらいて',
     subtitle: '作曲: J.-J.ルソー「村の占い師」の旋律より',
+    difficulty: 'intermediate',
     bpm: 96,
     beatsPerMeasure: 4,
     notes: [
@@ -81,6 +94,42 @@ window.SONGS = [
       { n: 'ソ', b: 1 }, { n: 'ラ', b: 1 }, { n: 'ソ', b: 1 }, { n: 'ファ', b: 1 },
       { n: 'ミ', b: 1 }, { n: 'ド', b: 1 }, { n: 'レ', b: 1 }, { n: 'ソ', o: -1, b: 1 },
       { n: 'ド', b: 4 },
+    ],
+  },
+  {
+    id: 'eine-kleine',
+    title: 'アイネ・クライネ・ナハトムジーク',
+    subtitle: 'モーツァルト: セレナード第13番 第1楽章より',
+    difficulty: 'advanced',
+    bpm: 112,
+    beatsPerMeasure: 4,
+    notes: [
+      { n: 'ド', o: -1, b: 1 }, { n: 'ソ', o: -1, b: 1 }, { n: 'ド', b: 1 }, { n: 'ミ', b: 1 },
+      { n: 'ソ', b: 4 },
+      { n: 'ド', o: -1, b: 1 }, { n: 'ソ', o: -1, b: 1 }, { n: 'シ', o: -1, b: 1 }, { n: 'レ', b: 1 },
+      { n: 'ド', b: 4 },
+      { n: 'ド', o: -1, b: 1 }, { n: 'ソ', o: -1, b: 1 }, { n: 'ド', b: 1 }, { n: 'ミ', b: 1 },
+      { n: 'ソ', b: 4 },
+      { n: 'ド', o: -1, b: 1 }, { n: 'ソ', o: -1, b: 1 }, { n: 'シ', o: -1, b: 1 }, { n: 'レ', b: 1 },
+      { n: 'ド', b: 4 },
+    ],
+  },
+  {
+    id: 'blue-danube',
+    title: '美しく青きドナウ',
+    subtitle: 'ヨハン・シュトラウス2世: ワルツより',
+    difficulty: 'advanced',
+    bpm: 120,
+    beatsPerMeasure: 3,
+    notes: [
+      { n: 'ド', b: 1 }, { n: 'ミ', b: 1 }, { n: 'ソ', b: 1 },
+      { n: 'ソ', b: 1 }, { n: 'ミ', b: 1 }, { n: 'ド', b: 1 },
+      { n: 'ド', b: 1 }, { n: 'ミ', b: 1 }, { n: 'ソ', b: 1 },
+      { n: 'ソ', b: 1 }, { n: 'ミ', b: 1 }, { n: 'ド', b: 1 },
+      { n: 'ド', b: 1 }, { n: 'ミ', b: 1 }, { n: 'ソ', b: 1 },
+      { n: 'ソ', b: 1 }, { n: 'ミ', b: 1 }, { n: 'ド', b: 1 },
+      { n: 'ド', b: 1 }, { n: 'ミ', b: 1 }, { n: 'ソ', b: 1 },
+      { n: 'ソ', b: 1 }, { n: 'ミ', b: 1 }, { n: 'ド', b: 1 },
     ],
   },
 ];
