@@ -16,7 +16,6 @@
   const difficultyButtonsEl = document.getElementById('difficultyButtons');
   const difficultyModeSwitch = document.getElementById('difficultyModeSwitch');
   const songlistTitle = document.getElementById('songlistTitle');
-  const songlistModeSwitch = document.getElementById('songlistModeSwitch');
   const songListEl = document.getElementById('songListEl');
   const playerTitle = document.getElementById('playerTitle');
   const playerSubtitle = document.getElementById('playerSubtitle');
@@ -85,11 +84,11 @@
 
   // ---------------- Router ----------------
 
-  const STATE = { screen: 'home', mode: 'practice', difficulty: null, listContext: 'all', songId: null };
+  const STATE = { screen: 'home', mode: 'practice', expandedDifficulty: null, songId: null };
   const navStack = [];
 
   function snapshot() {
-    return { screen: STATE.screen, mode: STATE.mode, difficulty: STATE.difficulty, listContext: STATE.listContext, songId: STATE.songId };
+    return { screen: STATE.screen, mode: STATE.mode, expandedDifficulty: STATE.expandedDifficulty, songId: STATE.songId };
   }
 
   function showScreenEl(name) {
@@ -134,11 +133,10 @@
       const target = btn.dataset.navHome;
       if (target === 'practice') goTo('difficulty', { mode: 'practice' });
       else if (target === 'performance') goTo('difficulty', { mode: 'performance' });
-      else if (target === 'library') goTo('songlist', { difficulty: null, listContext: 'all', mode: 'practice' });
+      else if (target === 'library') goTo('songlist', {});
     });
   });
   difficultyModeSwitch.addEventListener('click', switchMode);
-  songlistModeSwitch.addEventListener('click', switchMode);
   playerModeSwitch.addEventListener('click', switchMode);
 
   // ---------------- Screen renderers ----------------
@@ -147,81 +145,90 @@
     return window.SONGS.filter((s) => s.difficulty === diffId);
   }
 
+  function difficultyLabel(id) {
+    const lvl = window.DIFFICULTY_LEVELS.find((l) => l.id === id);
+    return lvl ? lvl.label : id;
+  }
+
+  function buildSongCard(s, { showDifficultyTag }) {
+    const status = getSongStatus(s.id);
+    const card = document.createElement('div');
+    card.className = 'song-card';
+
+    const main = document.createElement('div');
+    main.className = 'song-card-main';
+    main.innerHTML = `
+      <div class="song-card-title">${s.title}</div>
+      <div class="song-card-sub">${s.subtitle}</div>
+      <div class="song-card-badges">
+        ${showDifficultyTag ? `<span class="badge tag-${s.difficulty}">${difficultyLabel(s.difficulty)}</span>` : ''}
+        ${status.practiced ? '<span class="badge status-practiced">演奏済み</span>' : ''}
+      </div>`;
+    main.addEventListener('click', () => goTo('player', { songId: s.id }));
+
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.className = 'star-btn' + (isFavorite(s.id) ? ' favorited' : '');
+    star.textContent = isFavorite(s.id) ? '★' : '☆';
+    star.setAttribute('aria-label', 'お気に入り切替');
+    star.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFavorite(s.id);
+      renderCurrentScreen();
+    });
+
+    card.appendChild(main);
+    card.appendChild(star);
+    return card;
+  }
+
+  function sortByFavorite(list) {
+    return list.slice().sort((a, b) => Number(isFavorite(b.id)) - Number(isFavorite(a.id)));
+  }
+
   function renderDifficultyScreen() {
     difficultyTitle.textContent = MODE_LABEL[STATE.mode];
     difficultyModeSwitch.textContent = STATE.mode === 'practice' ? '本番演奏に切替' : '演奏練習に切替';
     difficultyButtonsEl.innerHTML = '';
     window.DIFFICULTY_LEVELS.forEach((level) => {
       const songs = songsForDifficulty(level.id);
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'difficulty-btn' + (songs.length === 0 ? ' empty' : '');
-      btn.innerHTML = `<span>${level.label}</span><span class="count">${songs.length > 0 ? songs.length + '曲' : '準備中'}</span>`;
-      btn.addEventListener('click', () => {
-        goTo('songlist', { difficulty: level.id, listContext: 'difficulty', mode: STATE.mode });
-      });
-      difficultyButtonsEl.appendChild(btn);
-    });
-  }
+      const isOpen = STATE.expandedDifficulty === level.id;
 
-  function difficultyLabel(id) {
-    const lvl = window.DIFFICULTY_LEVELS.find((l) => l.id === id);
-    return lvl ? lvl.label : id;
+      const item = document.createElement('div');
+      item.className = 'accordion-item' + (isOpen ? ' open' : '');
+
+      const header = document.createElement('button');
+      header.type = 'button';
+      header.className = 'difficulty-btn' + (songs.length === 0 ? ' empty' : '');
+      header.innerHTML = `
+        <span class="difficulty-btn-main"><span>${level.label}</span><span class="count">${songs.length > 0 ? songs.length + '曲' : '準備中'}</span></span>
+        <span class="chevron">▾</span>`;
+      header.addEventListener('click', () => {
+        STATE.expandedDifficulty = isOpen ? null : level.id;
+        renderDifficultyScreen();
+      });
+
+      const panel = document.createElement('div');
+      panel.className = 'accordion-panel';
+      if (songs.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'empty-state';
+        empty.textContent = 'この難易度の曲は準備中です。近日追加予定！';
+        panel.appendChild(empty);
+      } else {
+        sortByFavorite(songs).forEach((s) => panel.appendChild(buildSongCard(s, { showDifficultyTag: false })));
+      }
+
+      item.appendChild(header);
+      item.appendChild(panel);
+      difficultyButtonsEl.appendChild(item);
+    });
   }
 
   function renderSongListScreen() {
-    const isAll = STATE.listContext === 'all';
-    songlistModeSwitch.hidden = isAll;
-    if (isAll) {
-      songlistTitle.textContent = '楽曲一覧';
-    } else {
-      songlistTitle.textContent = `${difficultyLabel(STATE.difficulty)}の曲・${MODE_LABEL[STATE.mode]}`;
-      songlistModeSwitch.textContent = STATE.mode === 'practice' ? '本番演奏に切替' : '演奏練習に切替';
-    }
-
-    const list = isAll ? window.SONGS.slice() : songsForDifficulty(STATE.difficulty);
-    list.sort((a, b) => Number(isFavorite(b.id)) - Number(isFavorite(a.id)));
-
+    songlistTitle.textContent = '楽曲一覧';
     songListEl.innerHTML = '';
-    if (list.length === 0) {
-      const empty = document.createElement('p');
-      empty.className = 'empty-state';
-      empty.textContent = 'この難易度の曲は準備中です。近日追加予定！';
-      songListEl.appendChild(empty);
-      return;
-    }
-
-    list.forEach((s) => {
-      const status = getSongStatus(s.id);
-      const card = document.createElement('div');
-      card.className = 'song-card';
-
-      const main = document.createElement('div');
-      main.className = 'song-card-main';
-      main.innerHTML = `
-        <div class="song-card-title">${s.title}</div>
-        <div class="song-card-sub">${s.subtitle}</div>
-        <div class="song-card-badges">
-          ${isAll ? `<span class="badge tag-${s.difficulty}">${difficultyLabel(s.difficulty)}</span>` : ''}
-          ${status.practiced ? '<span class="badge status-practiced">演奏済み</span>' : ''}
-        </div>`;
-      main.addEventListener('click', () => goTo('player', { songId: s.id }));
-
-      const star = document.createElement('button');
-      star.type = 'button';
-      star.className = 'star-btn' + (isFavorite(s.id) ? ' favorited' : '');
-      star.textContent = isFavorite(s.id) ? '★' : '☆';
-      star.setAttribute('aria-label', 'お気に入り切替');
-      star.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleFavorite(s.id);
-        renderSongListScreen();
-      });
-
-      card.appendChild(main);
-      card.appendChild(star);
-      songListEl.appendChild(card);
-    });
+    sortByFavorite(window.SONGS).forEach((s) => songListEl.appendChild(buildSongCard(s, { showDifficultyTag: true })));
   }
 
   function renderPlayerScreen() {
