@@ -1,4 +1,4 @@
-const CACHE_NAME = 'classic-otamaster-v5';
+const CACHE_NAME = 'classic-otamaster-v6';
 const ASSETS = [
   './',
   './index.html',

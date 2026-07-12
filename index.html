@@ -87,6 +87,17 @@
     </section>
 
     <section class="transport-panel card">
+      <div class="pendulum-wrap">
+        <svg viewBox="0 0 100 110" class="pendulum-svg">
+          <path class="pendulum-body" d="M20 100 L38 20 L62 20 L80 100 Z" />
+          <g class="pendulum-arm">
+            <line x1="50" y1="28" x2="50" y2="95" class="pendulum-rod" />
+            <circle cx="50" cy="68" r="6" class="pendulum-bob" />
+          </g>
+          <circle cx="50" cy="28" r="3" class="pendulum-pivot" />
+        </svg>
+      </div>
+
       <div class="transport-buttons">
         <button id="playBtn" class="btn btn-play" type="button" aria-label="再生">
           <svg viewBox="0 0 24 24" class="icon icon-play"><path d="M8 5v14l11-7z"/></svg>
