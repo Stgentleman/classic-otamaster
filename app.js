@@ -40,7 +40,6 @@
   const metroVolSlider = document.getElementById('metroVolSlider');
   const demoVolSlider = document.getElementById('demoVolSlider');
   const beatDotsEl = document.getElementById('beatDots');
-  const pendulumArm = document.querySelector('.pendulum-arm');
 
   const SEMITONES = { 'ド': 0, 'レ': 2, 'ミ': 4, 'ファ': 5, 'ソ': 7, 'ラ': 9, 'シ': 11 };
   const BASE_FREQ = 261.6256; // C4, used as the movable "ド" reference pitch
@@ -372,8 +371,8 @@
     if (audioCtx.state === 'suspended') audioCtx.resume();
   }
 
-  // Wooden pendulum-metronome "tock": a bandpass-filtered noise transient
-  // (the woody click) layered with a short pitch-dropping thunk (the body).
+  // Dry mechanical-switch "tick": a very short highpass-filtered noise
+  // transient, no low-end body, so it reads as a crisp click rather than a pop.
   function scheduleClick(time, accent) {
     if (!metroCheck.checked) return;
     const vol = metroVolSlider.value / 100;
@@ -381,29 +380,16 @@
 
     const noise = audioCtx.createBufferSource();
     noise.buffer = metroNoiseBuffer;
-    const bandpass = audioCtx.createBiquadFilter();
-    bandpass.type = 'bandpass';
-    bandpass.frequency.value = accent ? 1500 : 1100;
-    bandpass.Q.value = 3.5;
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(0.0001, time);
-    noiseGain.gain.exponentialRampToValueAtTime((accent ? 0.9 : 0.6) * vol, time + 0.002);
-    noiseGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.045);
-    noise.connect(bandpass).connect(noiseGain).connect(masterGain);
+    const highpass = audioCtx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = accent ? 3200 : 2400;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime((accent ? 0.8 : 0.55) * vol, time + 0.001);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.018);
+    noise.connect(highpass).connect(gain).connect(masterGain);
     noise.start(time);
-    noise.stop(time + 0.05);
-
-    const osc = audioCtx.createOscillator();
-    const oscGain = audioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(accent ? 320 : 260, time);
-    osc.frequency.exponentialRampToValueAtTime(accent ? 170 : 140, time + 0.035);
-    oscGain.gain.setValueAtTime(0.0001, time);
-    oscGain.gain.exponentialRampToValueAtTime((accent ? 0.5 : 0.35) * vol, time + 0.003);
-    oscGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
-    osc.connect(oscGain).connect(masterGain);
-    osc.start(time);
-    osc.stop(time + 0.06);
+    noise.stop(time + 0.02);
   }
 
   function noteFrequency(note) {
@@ -527,7 +513,6 @@
 
   function clearBeatDots() {
     Array.from(beatDotsEl.children).forEach((d) => d.classList.remove('on', 'downbeat'));
-    pendulumArm.classList.remove('left', 'right');
   }
 
   function visualTick() {
@@ -535,7 +520,7 @@
     const now = audioCtx.currentTime;
     const spb = secPerBeat();
 
-    // beat dots + pendulum swing (covers count-in and playback)
+    // beat dots (covers count-in and playback)
     const globalElapsed = now - startTime;
     if (globalElapsed >= 0) {
       const beatIdx = Math.floor(globalElapsed / spb);
@@ -544,9 +529,6 @@
         d.classList.toggle('on', i === dotIdx);
         d.classList.toggle('downbeat', i === dotIdx && dotIdx === 0);
       });
-      pendulumArm.style.transitionDuration = spb + 's';
-      pendulumArm.classList.toggle('left', beatIdx % 2 === 0);
-      pendulumArm.classList.toggle('right', beatIdx % 2 === 1);
     }
 
     const elapsedBeats = (now - playStartTime) / spb;

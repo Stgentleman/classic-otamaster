@@ -385,41 +385,6 @@ html, body {
   text-shadow: 0 0 24px rgba(255,122,198,0.4);
 }
 
-/* Pendulum */
-.pendulum-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 4px;
-}
-.pendulum-svg {
-  width: 76px;
-  height: 84px;
-  overflow: visible;
-}
-.pendulum-body {
-  fill: var(--bg2);
-  stroke: var(--card-border);
-  stroke-width: 2;
-}
-.pendulum-rod {
-  stroke: var(--accent2);
-  stroke-width: 3;
-  stroke-linecap: round;
-}
-.pendulum-bob {
-  fill: var(--accent2);
-}
-.pendulum-pivot {
-  fill: var(--text-dim);
-}
-.pendulum-arm {
-  transform: rotate(0deg);
-  transform-origin: 50px 28px;
-  transition: transform 0.3s linear;
-}
-.pendulum-arm.left { transform: rotate(-22deg); }
-.pendulum-arm.right { transform: rotate(22deg); }
-
 /* Transport */
 .transport-buttons {
   display: flex;
