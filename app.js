@@ -375,29 +375,57 @@
   }
 
   // ---------------- Score scrubbing (swipe to choose start position) ----------------
+  // Direct 1:1 tracking while the finger is down, then momentum + an eased
+  // settle into the nearest note on release -- avoids the "teleport" feel of
+  // an instant snap.
 
   let dragging = false;
   let dragStartX = 0;
   let dragStartPx = 0;
+  let lastMoveX = 0;
+  let lastMoveT = 0;
+  let dragVelocity = 0; // px of clientX per ms, most-recent movement
+  let momentumRaf = null;
+
+  function cancelMomentum() {
+    if (momentumRaf) {
+      cancelAnimationFrame(momentumRaf);
+      momentumRaf = null;
+    }
+  }
 
   scoreViewport.addEventListener('pointerdown', (e) => {
     if (!blocks.length) return;
     if (isPlaying || isPaused) stopPlayback(true);
+    cancelMomentum();
+    scoreTrack.style.transition = 'none';
     dragging = true;
     scoreViewport.classList.add('dragging');
     scoreViewport.setPointerCapture(e.pointerId);
     dragStartX = e.clientX;
     dragStartPx = pxForBeat(seekBeat);
+    lastMoveX = e.clientX;
+    lastMoveT = performance.now();
+    dragVelocity = 0;
   });
 
   scoreViewport.addEventListener('pointermove', (e) => {
     if (!dragging) return;
+    const now = performance.now();
+    const dt = now - lastMoveT;
+    if (dt > 4) dragVelocity = Math.max(-2.5, Math.min(2.5, (e.clientX - lastMoveX) / dt));
+    lastMoveX = e.clientX;
+    lastMoveT = now;
+
     const dx = e.clientX - dragStartX;
-    const px = dragStartPx - dx;
-    const beats = beatForPx(px);
-    setTrackPositionAtBeat(beats);
-    setActiveNote(findNoteIndexAtBeat(beats));
+    const px = clampPx(dragStartPx - dx);
+    scoreTrack.style.transform = `translateX(${-px}px)`;
+    setActiveNote(findNoteIndexAtBeat(beatForPx(px)));
   });
+
+  function clampPx(px) {
+    return Math.max(0, Math.min(px, pxForBeat(totalBeats)));
+  }
 
   function endDrag(e) {
     if (!dragging) return;
@@ -405,15 +433,52 @@
     scoreViewport.classList.remove('dragging');
     if (scoreViewport.hasPointerCapture(e.pointerId)) scoreViewport.releasePointerCapture(e.pointerId);
     const dx = e.clientX - dragStartX;
-    const px = dragStartPx - dx;
-    const beats = beatForPx(px);
-    const idx = findNoteIndexAtBeat(beats);
-    seekBeat = noteTimeline[idx].beatStart;
-    setTrackPositionAtBeat(seekBeat);
-    setActiveNote(idx);
+    const startPx = clampPx(dragStartPx - dx);
+    runMomentum(startPx, -dragVelocity);
   }
   scoreViewport.addEventListener('pointerup', endDrag);
   scoreViewport.addEventListener('pointercancel', endDrag);
+
+  function runMomentum(startPx, initialVelocity) {
+    const maxPx = pxForBeat(totalBeats);
+    let px = startPx;
+    let velocity = initialVelocity; // px per ms of track movement
+    let lastT = performance.now();
+
+    function step() {
+      const now = performance.now();
+      const dt = Math.min(48, now - lastT);
+      lastT = now;
+
+      px += velocity * dt;
+      velocity *= Math.pow(0.994, dt);
+      if (px <= 0 || px >= maxPx) velocity = 0;
+      px = Math.max(0, Math.min(px, maxPx));
+
+      scoreTrack.style.transform = `translateX(${-px}px)`;
+      setActiveNote(findNoteIndexAtBeat(beatForPx(px)));
+
+      if (Math.abs(velocity) > 0.015) {
+        momentumRaf = requestAnimationFrame(step);
+      } else {
+        settleToNearestNote(px);
+      }
+    }
+    momentumRaf = requestAnimationFrame(step);
+  }
+
+  function settleToNearestNote(px) {
+    const idx = findNoteIndexAtBeat(beatForPx(px));
+    seekBeat = noteTimeline[idx].beatStart;
+    const targetPx = pxForBeat(seekBeat);
+    scoreTrack.style.transition = 'transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)';
+    scoreTrack.style.transform = `translateX(${-targetPx}px)`;
+    setActiveNote(idx);
+    momentumRaf = null;
+    scoreTrack.addEventListener('transitionend', () => {
+      scoreTrack.style.transition = 'none';
+    }, { once: true });
+  }
 
   // ---------------- Audio ----------------
 
@@ -509,6 +574,8 @@
   // ---------------- Transport ----------------
 
   function startPlayback() {
+    cancelMomentum();
+    scoreTrack.style.transition = 'none';
     ensureAudio();
     const spb = secPerBeat();
     startTime = audioCtx.currentTime + 0.12;
