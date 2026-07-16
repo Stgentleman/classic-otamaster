@@ -308,6 +308,19 @@ html, body {
   overflow: hidden;
   background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
   border-bottom: 1px solid var(--card-border);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.score-viewport.dragging {
+  cursor: grabbing;
+}
+.scrub-hint {
+  margin: 0 0 10px;
+  padding: 0 16px 4px;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-align: center;
 }
 .playhead {
   position: absolute;

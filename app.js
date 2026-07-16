@@ -23,6 +23,7 @@
   const modeBanner = document.getElementById('modeBanner');
 
   // ---- DOM refs: player ----
+  const scoreViewport = document.getElementById('scoreViewport');
   const scoreTrack = document.getElementById('scoreTrack');
   const nowNote = document.getElementById('nowNote');
   const playBtn = document.getElementById('playBtn');
@@ -261,6 +262,7 @@
   let totalGlobalBeats = 0;
   let nextNoteScheduleIndex = 0; // index into noteTimeline still to schedule for demo mode
   let reachedEndThisRun = false;
+  let seekBeat = 0; // beat position where the next playback will start (set by swiping the score)
 
   function loadSong(newSong) {
     stopPlayback(true);
@@ -268,6 +270,7 @@
     bpm = song.bpm;
     bpmSlider.value = bpm;
     bpmValue.textContent = bpm;
+    seekBeat = 0;
 
     noteTimeline = [];
     let cursor = 0;
@@ -315,20 +318,39 @@
       scoreTrack.appendChild(el);
       return el;
     });
-    // Reset scroll to start (first note centered under playhead)
-    requestAnimationFrame(() => setTrackPositionAtBeat(0));
+    // Reset scroll to the seek position (first note centered under playhead by default)
+    requestAnimationFrame(() => setTrackPositionAtBeat(seekBeat));
     setActiveNote(-1);
     nowNote.textContent = '－';
   }
 
-  function setTrackPositionAtBeat(beats) {
-    if (!blocks.length) return;
+  function pxForBeat(beats) {
+    if (!blocks.length) return 0;
     const idx = findNoteIndexAtBeat(beats);
     const b = blocks[idx];
     const seg = noteTimeline[idx];
     const frac = seg.beatEnd > seg.beatStart ? (beats - seg.beatStart) / (seg.beatEnd - seg.beatStart) : 0;
-    const px = b.offsetLeft + frac * b.offsetWidth;
-    scoreTrack.style.transform = `translateX(${-px}px)`;
+    return b.offsetLeft + frac * b.offsetWidth;
+  }
+
+  function beatForPx(px) {
+    if (!blocks.length) return 0;
+    const maxPx = blocks[blocks.length - 1].offsetLeft + blocks[blocks.length - 1].offsetWidth;
+    const clamped = Math.max(0, Math.min(px, maxPx));
+    for (let i = 0; i < blocks.length; i++) {
+      const left = blocks[i].offsetLeft;
+      const width = blocks[i].offsetWidth;
+      if (clamped <= left + width || i === blocks.length - 1) {
+        const frac = width > 0 ? Math.max(0, Math.min(1, (clamped - left) / width)) : 0;
+        return noteTimeline[i].beatStart + frac * (noteTimeline[i].beatEnd - noteTimeline[i].beatStart);
+      }
+    }
+    return totalBeats;
+  }
+
+  function setTrackPositionAtBeat(beats) {
+    if (!blocks.length) return;
+    scoreTrack.style.transform = `translateX(${-pxForBeat(beats)}px)`;
   }
 
   function findNoteIndexAtBeat(beats) {
@@ -351,6 +373,47 @@
       nowNote.textContent = '－';
     }
   }
+
+  // ---------------- Score scrubbing (swipe to choose start position) ----------------
+
+  let dragging = false;
+  let dragStartX = 0;
+  let dragStartPx = 0;
+
+  scoreViewport.addEventListener('pointerdown', (e) => {
+    if (!blocks.length) return;
+    if (isPlaying || isPaused) stopPlayback(true);
+    dragging = true;
+    scoreViewport.classList.add('dragging');
+    scoreViewport.setPointerCapture(e.pointerId);
+    dragStartX = e.clientX;
+    dragStartPx = pxForBeat(seekBeat);
+  });
+
+  scoreViewport.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - dragStartX;
+    const px = dragStartPx - dx;
+    const beats = beatForPx(px);
+    setTrackPositionAtBeat(beats);
+    setActiveNote(findNoteIndexAtBeat(beats));
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    scoreViewport.classList.remove('dragging');
+    if (scoreViewport.hasPointerCapture(e.pointerId)) scoreViewport.releasePointerCapture(e.pointerId);
+    const dx = e.clientX - dragStartX;
+    const px = dragStartPx - dx;
+    const beats = beatForPx(px);
+    const idx = findNoteIndexAtBeat(beats);
+    seekBeat = noteTimeline[idx].beatStart;
+    setTrackPositionAtBeat(seekBeat);
+    setActiveNote(idx);
+  }
+  scoreViewport.addEventListener('pointerup', endDrag);
+  scoreViewport.addEventListener('pointercancel', endDrag);
 
   // ---------------- Audio ----------------
 
@@ -434,9 +497,9 @@
       nextClickBeatIndex++;
     }
     while (nextNoteScheduleIndex < noteTimeline.length &&
-           playStartTime + noteTimeline[nextNoteScheduleIndex].beatStart * spb < audioCtx.currentTime + SCHEDULE_AHEAD_SEC) {
+           playStartTime + (noteTimeline[nextNoteScheduleIndex].beatStart - seekBeat) * spb < audioCtx.currentTime + SCHEDULE_AHEAD_SEC) {
       const seg = noteTimeline[nextNoteScheduleIndex];
-      const t = playStartTime + seg.beatStart * spb;
+      const t = playStartTime + (seg.beatStart - seekBeat) * spb;
       const dur = (seg.beatEnd - seg.beatStart) * spb;
       scheduleNoteTone(t, dur, noteFrequency(seg.note));
       nextNoteScheduleIndex++;
@@ -450,9 +513,9 @@
     const spb = secPerBeat();
     startTime = audioCtx.currentTime + 0.12;
     playStartTime = startTime + song.beatsPerMeasure * spb;
-    totalGlobalBeats = song.beatsPerMeasure + Math.ceil(totalBeats);
+    totalGlobalBeats = song.beatsPerMeasure + Math.ceil(totalBeats - seekBeat);
     nextClickBeatIndex = 0;
-    nextNoteScheduleIndex = 0;
+    nextNoteScheduleIndex = findNoteIndexAtBeat(seekBeat);
     reachedEndThisRun = false;
 
     isPlaying = true;
@@ -507,7 +570,7 @@
     clearBeatDots();
     if (!silent && blocks.length) {
       setActiveNote(-1);
-      requestAnimationFrame(() => setTrackPositionAtBeat(0));
+      requestAnimationFrame(() => setTrackPositionAtBeat(seekBeat));
     }
   }
 
@@ -531,11 +594,12 @@
       });
     }
 
-    const elapsedBeats = (now - playStartTime) / spb;
-    if (elapsedBeats < 0) {
+    const timeSincePlayStart = now - playStartTime;
+    if (timeSincePlayStart < 0) {
       // still counting in
-      setTrackPositionAtBeat(0);
-    } else if (elapsedBeats >= totalBeats) {
+      setTrackPositionAtBeat(seekBeat);
+      setActiveNote(findNoteIndexAtBeat(seekBeat));
+    } else if (seekBeat + timeSincePlayStart / spb >= totalBeats) {
       if (!reachedEndThisRun) {
         reachedEndThisRun = true;
         markPracticed(song.id);
@@ -549,6 +613,7 @@
         return;
       }
     } else {
+      const elapsedBeats = seekBeat + timeSincePlayStart / spb;
       const idx = findNoteIndexAtBeat(elapsedBeats);
       setActiveNote(idx);
       setTrackPositionAtBeat(elapsedBeats);
@@ -596,7 +661,7 @@
 
   window.addEventListener('resize', () => {
     if (!isPlaying && screens.player && !screens.player.hidden) {
-      requestAnimationFrame(() => setTrackPositionAtBeat(0));
+      requestAnimationFrame(() => setTrackPositionAtBeat(seekBeat));
     }
   });
 
